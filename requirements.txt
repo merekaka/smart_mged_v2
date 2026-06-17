@@ -1,0 +1,137 @@
+# Project: smart-mged
+# Python version: 3.10+ (recommended), current environment: 3.14.3
+# Generated from: pip list --format=freeze
+
+# ==================== Web Framework ====================
+Django==6.0.3
+django-cors-headers==4.9.0
+asgiref==3.11.1
+
+# ==================== Database ====================
+mysqlclient==2.2.8
+PyMySQL==1.1.2
+
+# ==================== Vector Search & ML ====================
+faiss-cpu==1.13.2
+sentence-transformers==5.3.0
+scikit-learn==1.8.0
+scipy==1.17.1
+numpy==2.4.3
+pandas==3.0.1
+
+# ==================== Deep Learning ====================
+torch==2.11.0
+transformers==5.4.0
+tokenizers==0.22.2
+safetensors==0.7.0
+huggingface_hub==1.8.0
+
+# ==================== LLM API ====================
+openai==2.31.0
+dashscope==1.25.16
+httpx==0.28.1
+httpcore==1.0.9
+
+# ==================== Knowledge Graph ====================
+neo4j==6.2.0
+networkx==3.6.1
+
+# ==================== Data Processing ====================
+jieba==0.42.1
+PyYAML==6.0.3
+requests==2.33.0
+regex==2026.2.28
+python-dateutil==2.9.0.post0
+
+# ==================== Visualization & Report ====================
+matplotlib==3.10.8
+fpdf2==2.8.7
+pillow==12.1.1
+
+# ==================== Utilities ====================
+click==8.3.1
+tqdm==4.67.3
+packaging==26.0
+joblib==1.5.3
+threadpoolctl==3.6.0
+six==1.17.0
+
+# ==================== Typing & Validation ====================
+pydantic==2.12.5
+pydantic_core==2.41.5
+annotated-types==0.7.0
+typing_extensions==4.15.0
+typing-inspection==0.4.2
+
+# ==================== Async & HTTP ====================
+aiohttp==3.13.5
+aiohappyeyeballs==2.6.1
+aiosignal==1.4.0
+anyio==4.13.0
+h11==0.16.0
+sniffio==1.3.1
+yarl==1.23.0
+frozenlist==1.8.0
+multidict==6.7.1
+propcache==0.4.1
+
+# ==================== Crypto & Security ====================
+cryptography==46.0.7
+cffi==2.0.0
+pycparser==3.0
+certifi==2026.2.25
+charset-normalizer==3.4.6
+idna==3.11
+urllib3==2.6.3
+
+# ==================== Math & Symbolic ====================
+sympy==1.14.0
+mpmath==1.3.0
+
+# ==================== Jinja2 & Template ====================
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+
+# ==================== Console & UI ====================
+rich==14.3.3
+markdown-it-py==4.0.0
+mdurl==0.1.2
+Pygments==2.19.2
+colorama==0.4.6
+typer==0.24.1
+shellingham==1.5.4
+
+# ==================== Font & Plotting ====================
+fonttools==4.62.1
+contourpy==1.3.3
+cycler==0.12.1
+kiwisolver==1.5.0
+pyparsing==3.3.2
+
+# ==================== XML & Archive ====================
+defusedxml==0.7.1
+
+# ==================== Timezone ====================
+tzdata==2025.3
+
+# ==================== Build Tools ====================
+setuptools==81.0.0
+filelock==3.25.2
+fsspec==2026.3.0
+hf-xet==1.4.2
+
+# ==================== WebSocket ====================
+websocket-client==1.9.0
+
+# ==================== Distribution ====================
+distutils
+attrs==26.1.0
+
+# ==================== Env Config ====================
+python-dotenv==1.2.2
+
+# ==================== Production Server (Optional) ====================
+# Linux 生产环境请手动安装: pip install gunicorn
+# Windows 生产环境请手动安装: pip install waitress
+# Windows IIS 部署请手动安装: pip install wfastcgi
+# 环境变量加载请手动安装: pip install python-dotenv

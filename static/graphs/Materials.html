@@ -1,0 +1,127 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 420px;
+                 height: 100%;
+                 background-color: #ffffff;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#90BEE0", "id": 0, "label": "Fundamental_of_Material_Science", "shape": "dot", "size": 40, "title": "Classification"}, {"color": "#F4F1DE", "id": 1, "label": "Pulling Method", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#FFA07A", "id": 2, "label": "Other", "shape": "dot", "size": 40, "title": "Head"}, {"color": "#F4F1DE", "id": 3, "label": "human body", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#F4F1DE", "id": 4, "label": "activating the complement system", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#F4F1DE", "id": 5, "label": "Product", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#F4F1DE", "id": 6, "label": "Electronic fractography analysis", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#FFA07A", "id": 7, "label": "Term", "shape": "dot", "size": 40, "title": "Head"}, {"color": "#F4F1DE", "id": 8, "label": "ASTM D2990-09 test standard", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#F4F1DE", "id": 9, "label": "manufacturing devices", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#F4F1DE", "id": 10, "label": "space vehicles", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#F4F1DE", "id": 11, "label": "intervention", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#F4F1DE", "id": 12, "label": "egg endoplasm", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#F4F1DE", "id": 13, "label": "manufacturing items", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#F4F1DE", "id": 14, "label": "manufacturing useful components", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#82B29A", "id": 15, "label": "implantation", "shape": "dot", "size": 20, "title": "Term"}, {"color": "#F4F1DE", "id": 16, "label": "material basis of all products", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#F4F1DE", "id": 17, "label": "controlling protein conformation", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#F4F1DE", "id": 18, "label": "dynamic weathering test", "shape": "dot", "size": 20, "title": "Other"}, {"color": "#82B29A", "id": 19, "label": "Materials", "shape": "dot", "size": 20, "title": "Term"}, {"color": "#82B29A", "id": 20, "label": "phase", "shape": "dot", "size": 20, "title": "Term"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "from": 19, "label": "isPartOf", "to": 3}, {"arrows": "to", "from": 19, "label": "isPartOf", "to": 10}, {"arrows": "to", "from": 19, "label": "isUsedFor", "to": 17}, {"arrows": "to", "from": 19, "label": "isUsedFor", "to": 3}, {"arrows": "to", "from": 19, "label": "isUsedFor", "to": 11}, {"arrows": "to", "from": 19, "label": "isUsedFor", "to": 15}, {"arrows": "to", "from": 19, "label": "isAKindOf", "to": 3}, {"arrows": "to", "from": 19, "label": "isAKindOf", "to": 16}, {"arrows": "to", "from": 19, "label": "isAKindOf", "to": 5}, {"arrows": "to", "from": 19, "label": "isAKindOf", "to": 0}, {"arrows": "to", "from": 19, "label": "isDependentOn", "to": 12}, {"arrows": "to", "from": 19, "label": "isDependentOn", "to": 3}, {"arrows": "to", "from": 19, "label": "isAlternativeTo", "to": 3}, {"arrows": "to", "from": 19, "label": "isSimilarTo", "to": 5}, {"arrows": "to", "from": 19, "label": "isSimilarTo", "to": 3}, {"arrows": "to", "from": 19, "label": "isMadeOf", "to": 3}, {"arrows": "to", "from": 19, "label": "isDerivedFrom", "to": 3}, {"arrows": "to", "from": 19, "label": "isTestedBy", "to": 3}, {"arrows": "to", "from": 19, "label": "isTestedBy", "to": 6}, {"arrows": "to", "from": 19, "label": "isTestedBy", "to": 18}, {"arrows": "to", "from": 19, "label": "isComplementaryTo", "to": 12}, {"arrows": "to", "from": 19, "label": "isComplementaryTo", "to": 3}, {"arrows": "to", "from": 19, "label": "subclassOf", "to": 2}, {"arrows": "to", "from": 19, "label": "subclassOf", "to": 7}, {"arrows": "to", "from": 19, "label": "isRelatedTo", "to": 20}, {"arrows": "to", "from": 19, "label": "isPartOf", "to": 1}, {"arrows": "to", "from": 19, "label": "isUsedFor", "to": 13}, {"arrows": "to", "from": 19, "label": "isUsedFor", "to": 4}, {"arrows": "to", "from": 19, "label": "isUsedFor", "to": 9}, {"arrows": "to", "from": 19, "label": "isUsedFor", "to": 14}, {"arrows": "to", "from": 19, "label": "isTestedBy", "to": 8}, {"arrows": "to", "from": 19, "label": "subclassOf", "to": 2}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {"physics": {"barnesHut": {"gravitationalConstant": -500000, "centralGravity": 12, "springLength": 50, "springConstant": 0.7, "damping": 3, "avoidOverlap": 10}}};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
