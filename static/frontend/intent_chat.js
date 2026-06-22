@@ -394,16 +394,16 @@ function formatPropsCell(props, excludeKeys, highlightProps) {
 }
 
 /**
- * 以列表形式展示属性，每个属性占一行，键值区分更明显
- * 类似图二的清晰行列式展示
+ * 以列表形式展示属性，支持折叠展开
+ * 默认只展示一排属性，可点击展开查看全部
  */
-function formatPropsList(props, highlightProps) {
+function formatPropsList(props, highlightProps, uniqueId) {
     if (!props || Object.keys(props).length === 0) return '<span class="prop-empty">-</span>';
     const entries = Object.entries(props);
     if (entries.length === 0) return '<span class="prop-empty">-</span>';
-    
+
     const hpSet = highlightProps instanceof Set ? highlightProps : (Array.isArray(highlightProps) ? new Set(highlightProps) : new Set());
-    
+
     const items = entries.map(([k, v]) => {
         const isHighlight = hpSet.has(k);
         const highlightClass = isHighlight ? ' prop-item-highlight' : '';
@@ -415,8 +415,48 @@ function formatPropsList(props, highlightProps) {
             </div>
         `;
     });
-    
-    return `<div class="prop-list">${items.join('')}</div>`;
+
+    const totalCount = entries.length;
+    const isFoldable = totalCount > 1;
+
+    if (!isFoldable) {
+        return `<div class="prop-list">${items.join('')}</div>`;
+    }
+
+    // 第一个属性直接展示，其余折叠
+    const firstItem = items[0];
+    const restItems = items.slice(1);
+    const wrapperId = uniqueId ? `prop-wrap-${uniqueId}` : '';
+
+    return `
+        <div class="prop-list" id="${wrapperId}">
+            ${firstItem}
+            <div class="prop-rest ${wrapperId ? 'prop-rest-hidden' : 'prop-rest-hidden'}" data-wrapper="${wrapperId}">
+                ${restItems.join('')}
+            </div>
+            <div class="prop-expand-toggle" onclick="togglePropExpand(this)">
+                <span class="prop-expand-text">展开 ${totalCount - 1} 个属性</span>
+                <span class="prop-expand-icon">▼</span>
+            </div>
+        </div>
+    `;
+}
+
+function togglePropExpand(toggleEl) {
+    const wrapper = toggleEl.closest('.prop-list');
+    const restDiv = wrapper.querySelector('.prop-rest');
+    const textSpan = toggleEl.querySelector('.prop-expand-text');
+    const iconSpan = toggleEl.querySelector('.prop-expand-icon');
+
+    if (restDiv.classList.contains('prop-rest-hidden')) {
+        restDiv.classList.remove('prop-rest-hidden');
+        textSpan.textContent = textSpan.textContent.replace('展开', '收起').replace('个属性', '个属性');
+        iconSpan.textContent = '▲';
+    } else {
+        restDiv.classList.add('prop-rest-hidden');
+        textSpan.textContent = textSpan.textContent.replace('收起', '展开');
+        iconSpan.textContent = '▼';
+    }
 }
 
 function showMoreResults(btn, currentLimit) {
@@ -437,10 +477,61 @@ function showMoreResults(btn, currentLimit) {
     }
 }
 
+function goToResultPage(wrapperEl, page, pageSize) {
+    const rows = wrapperEl.querySelectorAll('tbody tr');
+    const total = rows.length;
+    const totalPages = Math.ceil(total / pageSize);
+
+    page = Math.max(1, Math.min(page, totalPages));
+
+    rows.forEach((row, idx) => {
+        if (idx >= (page - 1) * pageSize && idx < page * pageSize) {
+            row.classList.remove('hidden-row');
+        } else {
+            row.classList.add('hidden-row');
+        }
+    });
+
+    const paginationEl = wrapperEl.querySelector('.result-pagination');
+    if (paginationEl) {
+        paginationEl.innerHTML = buildPaginationHTML(page, totalPages, total, pageSize);
+    }
+}
+
+function buildPaginationHTML(currentPage, totalPages, total, pageSize) {
+    if (totalPages <= 1) return '';
+
+    let html = '<div class="pagination-info">共 ' + total + ' 条，每页 ' + pageSize + ' 条</div>';
+    html += '<div class="pagination-controls">';
+
+    // 上一页
+    html += `<button class="pagination-btn ${currentPage === 1 ? 'pagination-btn-disabled' : ''}" onclick="goToResultPage(this.closest('.result-table-wrapper'), ${currentPage - 1}, ${pageSize})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>`;
+
+    // 页码
+    html += '<span class="pagination-pages">';
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === currentPage) {
+            html += `<span class="pagination-page pagination-page-active">${i}</span>`;
+        } else if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            html += `<span class="pagination-page" onclick="goToResultPage(this.closest('.result-table-wrapper'), ${i}, ${pageSize})">${i}</span>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            html += '<span class="pagination-ellipsis">...</span>';
+        }
+    }
+    html += '</span>';
+
+    // 下一页
+    html += `<button class="pagination-btn ${currentPage === totalPages ? 'pagination-btn-disabled' : ''}" onclick="goToResultPage(this.closest('.result-table-wrapper'), ${currentPage + 1}, ${pageSize})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>`;
+
+    html += '</div>';
+    return html;
+}
+
 function buildResultCardsHTML(records, highlightProps) {
     if (!records || records.length === 0) return '';
 
-    const initialLimit = 10;
+    const pageSize = 20;  // 每页展示数量，因行高减小而增加
+    const totalPages = Math.ceil(records.length / pageSize);
     const hpSet = highlightProps instanceof Set ? highlightProps : (Array.isArray(highlightProps) ? new Set(highlightProps) : new Set());
 
     let html = '<div class="result-table-wrapper">';
@@ -454,20 +545,21 @@ function buildResultCardsHTML(records, highlightProps) {
     html += '<tbody>';
 
     records.forEach((rec, idx) => {
-        const hiddenClass = idx >= initialLimit ? 'hidden-row' : '';
+        const hiddenClass = idx >= pageSize ? 'hidden-row' : '';
         const dataId = rec.data_id !== undefined ? rec.data_id : '-';
+        const rowId = `row-${idx}`;
         html += `<tr class="${hiddenClass}">`;
         html += `<td class="col-dataid"><a href="javascript:void(0)" class="data-id-link" onclick="showDataDetail(${dataId})">${escapeHtml(String(dataId))}</a></td>`;
-        html += `<td class="col-object">${formatPropsList(rec.object, hpSet)}</td>`;
-        html += `<td class="col-operate">${formatPropsList(rec.operate, hpSet)}</td>`;
-        html += `<td class="col-result">${formatPropsList(rec.result, hpSet)}</td>`;
+        html += `<td class="col-object">${formatPropsList(rec.object, hpSet, `obj-${rowId}`)}</td>`;
+        html += `<td class="col-operate">${formatPropsList(rec.operate, hpSet, `op-${rowId}`)}</td>`;
+        html += `<td class="col-result">${formatPropsList(rec.result, hpSet, `res-${rowId}`)}</td>`;
         html += '</tr>';
     });
 
     html += '</tbody></table>';
 
-    if (records.length > initialLimit) {
-        html += `<button class="show-more-btn" onclick="showMoreResults(this, ${initialLimit})">点击显示更多（还有 ${records.length - initialLimit} 条）</button>`;
+    if (records.length > pageSize) {
+        html += `<div class="result-pagination">${buildPaginationHTML(1, totalPages, records.length, pageSize)}</div>`;
     }
 
     html += '</div>';
@@ -1231,9 +1323,10 @@ function buildFollowUpResultHTML(data) {
     }
 
     // SQL 详情（可折叠）
-    if (data.sql) {
-        html += buildSQLDetailsHTML(data.sql, data.params);
-    }
+    // 注：SQL 已包含在结构化查询对象中，此处不再单独展示
+    // if (data.sql) {
+    //     html += buildSQLDetailsHTML(data.sql, data.params);
+    // }
 
     // 结构化查询对象（可折叠）：包含查询条件（JSON）和查询语句（SQL）
     if (Object.keys(sq).length > 0) {
