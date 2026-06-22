@@ -674,6 +674,7 @@ async function switchConversation(conversationId) {
     }
 }
 
+
 async function deleteConversation(conversationId, event) {
     if (event) event.stopPropagation();
     try {
