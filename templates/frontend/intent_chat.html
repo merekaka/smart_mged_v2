@@ -81,6 +81,27 @@
             background: #f3e5f5;
             color: #7b1fa2;
         }
+        /* 聚合结果展示样式 */
+        .agg-result-box {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border: 1px solid #a5d6a7;
+            border-radius: 6px;
+            padding: 8px 12px;
+        }
+        .agg-value-line {
+            font-size: 14px;
+            color: #2e7d32;
+            line-height: 1.6;
+        }
+        .agg-field {
+            font-weight: 600;
+            color: #1b5e20;
+        }
+        .agg-number {
+            font-weight: 700;
+            color: #e65100;
+            font-size: 15px;
+        }
         .condition-list {
             list-style: none;
             padding: 0;
@@ -916,6 +937,27 @@
                 grid-template-columns: 1fr;
             }
         }
+        /* 原始 JSON 展示样式 */
+        .raw-json-block {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 12px;
+            overflow-x: auto;
+            max-height: 60vh;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.5;
+            margin: 0;
+            display: block;
+            color: #333;
+        }
+        .raw-json-block code {
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            color: #333;
+            display: block;
+            white-space: pre;
+        }
         /* 元素组成饼图区域 */
         .element-composition-section {
             margin-bottom: 16px;
@@ -1031,18 +1073,18 @@
 
     <!-- 数据详情弹窗 -->
     <div class="term-modal" id="dataDetailModal">
-        <div class="term-modal-content" style="max-width: 700px;">
+        <div class="term-modal-content" style="max-width: 800px; width: 90%;">
             <div class="term-modal-header">
                 <div class="term-modal-title">原始数据详情 <span id="dataDetailTitle"></span></div>
                 <button class="term-modal-close" onclick="closeDataDetailModal()">&times;</button>
             </div>
-            <div class="term-modal-body" id="dataDetailBody">
+            <div class="term-modal-body" id="dataDetailBody" style="max-height: 70vh; overflow-y: auto;">
                 <div class="loading-text">加载中...</div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
-    <script src="/static/frontend/intent_chat.js?v=3"></script>
+    <script src="/static/frontend/intent_chat.js?v=5"></script>
 </body>
 </html>

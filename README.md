@@ -5,6 +5,45 @@
 > python 3.10.11
 > mysql 9.6.0；
 
+## 数据详情弹窗（原始 JSON 展示）
+
+点击对话界面结果表格中的 `data_id` 链接，会弹出数据详情弹窗。弹窗展示的是 **`data/` 目录下原始 JSON 文件中的未处理数据**（而非 MySQL 中处理后的数据）。
+
+### 对应关系
+
+- 前端 `data_id` = 原始数据中的 `_meta_id`
+- `data/` 目录下 40 个 JSON 文件的文件名 = 前端中的 `title` 字段（数据集名称）
+
+### 原始数据索引构建
+
+首次使用或 `data/` 目录下数据有更新时，需要重新构建索引：
+
+```bash
+python tools/build_raw_data_index.py
+```
+
+索引文件默认保存至 `data/raw_data_index.json`，包含所有 `_meta_id` 到 `(文件路径, 数组索引)` 的映射。
+
+### 弹窗展示内容
+
+弹窗以 JSON 格式展示原始数据，包含：
+- **元信息**：`_meta_id`、`_id`、`_tid`
+- **原始数据**：完整的 `data` 字段（包括嵌套数组、对象结构等），以格式化 JSON 代码块展示
+
+---
+
+## 聚合查询展示说明
+
+系统支持三种聚合查询的差异化展示：
+
+| 查询类型 | 数据展示 | 平均值展示 |
+|---------|---------|-----------|
+| **max / min** | 展示最值对应的**单条**数据 | 不显示 |
+| **avg** | 展示所有参与计算的**全部**数据 | 在"查询概览"下方显示"聚合结果"栏，展示平均值 |
+| **普通查询** | 展示匹配的数据 | 不显示 |
+
+---
+
 ## 项目结构
 
 ```
@@ -47,6 +86,14 @@ smart-mged/
 │   └── frontend/
 │       ├── intent_chat.js
 │       └── style.css
+│
+├── tools/                           ← 工具脚本
+│   ├── build_raw_data_index.py      ← 构建原始数据索引
+│   ├── build_graph_vocab_cache.py   ← 构建图谱词汇缓存
+│   ├── build_inverted_index.py      ← 构建倒排索引
+│   ├── create_faiss_index.py        ← 创建 FAISS 索引
+│   ├── test_intent_engine.py        ← 意图引擎测试
+│   └── test_intent_query.py         ← 意图查询测试
 │
 ├── data/                            ← 原始数据
 ├── tfidf_results/                   ← TF-IDF 预计算结果
@@ -167,6 +214,13 @@ python tools/test_intent_engine.py
 | `NEO4J_URL` | Neo4j 地址 | bolt://localhost:7687 |
 | `NEO4J_USER` | Neo4j 用户 | neo4j |
 | `NEO4J_PASSWORD` | Neo4j 密码 | CHANGE_ME_IN_PRODUCTION |
+
+## 数据文件与索引
+
+| 路径 | 说明 |
+|---|---|
+| `data/*.json` | 40 个原始数据集 JSON 文件 |
+| `data/raw_data_index.json` | `_meta_id` 索引文件（由 `tools/build_raw_data_index.py` 生成）|
 
 ## 批处理测试命令
 

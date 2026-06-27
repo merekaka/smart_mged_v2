@@ -1,3 +1,21 @@
+1. 创建/配置虚拟机（参考 md 第 1 步）
+
+2. 通过跳板机 SSH 连接服务器（参考 md 第 2 步）
+
+3. 安装 Miniconda + 配置镜像源（参考 md 第 3.2 步）
+
+4. 上传本项目代码到服务器（用 scp 或 git clone，非 mgedata 仓库）
+
+5. 创建 Python 虚拟环境 + 安装依赖（参考 DEPLOY.md 3.1）
+
+6. 配置 .env 文件（参考 DEPLOY.md 3.2）
+
+7. 数据库初始化（参考 DEPLOY.md 3.3）
+
+8. 配置 Systemd 服务 + 启动（参考 DEPLOY.md 3.6）
+
+9. 如需外网访问，设置端口转发（参考 md 第 8 步）接下来要如何上传本项目代码到服务器
+
 # 材料数据集问答式智能检索系统 - 部署文档
 
 > **GitHub 仓库**: https://github.com/merekaka/smart_mged_v2.git

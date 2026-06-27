@@ -1,0 +1,40 @@
+function buildRawDataDetailHTML(rawData, dataId) {
+    // 调试信息
+    var debugInfo = 'rawData type: ' + typeof rawData + ', keys: ' + Object.keys(rawData).join(', ');
+    
+    let html = '<div class="data-detail-content">';
+
+    // 标题
+    let title = '未命名';
+    if (rawData.title) {
+        title = rawData.title;
+    }
+    html += '<div class="data-detail-title">' + escapeHtml(title) + '</div>';
+
+    // 调试信息展示
+    html += '<div style="background:#fff3e0;padding:8px 12px;border-radius:4px;margin-bottom:12px;font-size:12px;color:#e65100;">';
+    html += '<strong>调试:</strong> ' + escapeHtml(debugInfo);
+    html += '</div>';
+
+    // 元信息
+    html += '<div class="data-detail-section">';
+    html += '<div class="data-detail-section-title">元信息</div>';
+    html += '<div class="data-detail-props">';
+    html += '<div class="data-detail-prop"><span class="prop-name">_meta_id</span><span class="prop-value">' + escapeHtml(String(dataId)) + '</span></div>';
+    html += '<div class="data-detail-prop"><span class="prop-name">_id</span><span class="prop-value">' + escapeHtml(String(rawData._id || '')) + '</span></div>';
+    html += '</div></div>';
+
+    // 原始数据 JSON
+    html += '<div class="data-detail-section">';
+    html += '<div class="data-detail-section-title">原始数据 (JSON)</div>';
+    try {
+        var jsonStr = JSON.stringify(rawData, null, 2);
+        html += '<pre class="raw-json-block"><code>' + escapeHtml(jsonStr) + '</code></pre>';
+    } catch (e) {
+        html += '<div class="error-box">JSON 序列化失败: ' + escapeHtml(String(e)) + '</div>';
+    }
+    html += '</div>';
+
+    html += '</div>';
+    return html;
+}

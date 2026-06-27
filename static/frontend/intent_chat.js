@@ -825,6 +825,7 @@ function renderConversationDetail(detail) {
                     sql: meta.sql,
                     sql_params: meta.sql_params,
                     sql_rendered: meta.sql_rendered,
+                    aggregations: meta.aggregations,
                 }, msg.created_at);
             } else if (msg.message_type === 'follow_up') {
                 const meta = msg.meta || {};
@@ -1173,6 +1174,24 @@ function buildIntentResultHTML(data) {
         `;
     }
 
+    // 聚合结果展示：仅当存在 avg 聚合时显示平均值
+    const aggs = data.aggregations || [];
+    const avgAggs = aggs.filter(a => a.agg_func === 'avg');
+    if (avgAggs.length > 0) {
+        let aggHtml = '';
+        avgAggs.forEach(agg => {
+            const fieldName = fieldToName(agg.field) || agg.field;
+            const val = agg.agg_value !== null && agg.agg_value !== undefined ? agg.agg_value : '—';
+            aggHtml += `<div class="agg-value-line"><span class="agg-field">${escapeHtml(fieldName)}</span> 的平均值：<span class="agg-number">${escapeHtml(String(val))}</span></div>`;
+        });
+        html += `
+            <div class="intent-section compact-section">
+                <div class="intent-section-title">聚合结果</div>
+                <div class="intent-section-content agg-result-box">${aggHtml}</div>
+            </div>
+        `;
+    }
+
     // 实体 + 目标属性（紧凑合并为一行）
     const hasEntities = intent.entities && intent.entities.length > 0;
     const hasProps = intent.target_properties && intent.target_properties.length > 0;
@@ -1276,6 +1295,24 @@ function buildFollowUpResultHTML(data) {
             <div class="intent-section compact-section">
                 <div class="intent-section-title">查询概览</div>
                 <div class="intent-section-content overview-badges">${overviewBadges}</div>
+            </div>
+        `;
+    }
+
+    // 聚合结果展示：仅当存在 avg 聚合时显示平均值
+    const aggs = data.aggregations || [];
+    const avgAggs = aggs.filter(a => a.agg_func === 'avg');
+    if (avgAggs.length > 0) {
+        let aggHtml = '';
+        avgAggs.forEach(agg => {
+            const fieldName = fieldToName(agg.field) || agg.field;
+            const val = agg.agg_value !== null && agg.agg_value !== undefined ? agg.agg_value : '—';
+            aggHtml += `<div class="agg-value-line"><span class="agg-field">${escapeHtml(fieldName)}</span> 的平均值：<span class="agg-number">${escapeHtml(String(val))}</span></div>`;
+        });
+        html += `
+            <div class="intent-section compact-section">
+                <div class="intent-section-title">聚合结果</div>
+                <div class="intent-section-content agg-result-box">${aggHtml}</div>
             </div>
         `;
     }
@@ -1645,7 +1682,10 @@ async function sendMessage() {
                 console.log('[sendMessage] follow-up response:', data.data);
                 if (data.data.structured_query) {
                     // 保险触发：后端降级为数据检索
-                    appendIntentResultToDOM(data.data);
+                    appendIntentResultToDOM({
+                        ...data.data,
+                        aggregations: data.data.aggregations || [],
+                    });
                 } else {
                     appendFollowUpResultToDOM({
                         answer: data.data.answer,
@@ -1659,6 +1699,7 @@ async function sendMessage() {
                         analysis_result: data.data.analysis_result,
                         scope: data.data.scope,
                         original_query: data.data.original_query,
+                        aggregations: data.data.aggregations || [],
                     });
                 }
                 // 更新列表中的最新消息
@@ -1739,11 +1780,36 @@ async function showDataDetail(dataId) {
     try {
         const resp = await fetch(`${API_BASE_URL}/api/chat/data_detail/${dataId}`);
         const result = await resp.json();
+        console.log('[showDataDetail] API response:', result);
         if (result.success && result.data) {
-            body.innerHTML = buildDataDetailHTML(result.data);
-            // 渲染元素组成饼图（如果有）
-            if (result.data.element_composition && result.data.element_composition.has_composition) {
-                renderElementCompositionChart(result.data.element_composition);
+            // 检查是否是原始 JSON 数据（新格式）
+            if (result.data.raw_json) {
+                console.log('[showDataDetail] raw_json found, building HTML');
+                const html = buildRawDataDetailHTML(result.data.raw_json, dataId);
+                console.log('[showDataDetail] HTML length:', html.length);
+                body.innerHTML = html;
+                // 高亮 JSON 代码块
+                try {
+                    if (window.hljs) {
+                        body.querySelectorAll('pre code').forEach(function(block) {
+                            hljs.highlightElement(block);
+                        });
+                    }
+                } catch (hlError) {
+                    console.warn('[showDataDetail] highlight failed:', hlError);
+                }
+                // 渲染元素组成饼图（从原始数据中提取）
+                var rawComposition = extractElementComposition(result.data.raw_json);
+                if (rawComposition && rawComposition.has_composition) {
+                    console.log('[showDataDetail] rendering element composition chart from raw data');
+                    renderElementCompositionChart(rawComposition, 'element-chart-' + dataId);
+                }
+            } else {
+                // 兼容旧格式（MySQL 处理后的数据）
+                body.innerHTML = buildDataDetailHTML(result.data);
+                if (result.data.element_composition && result.data.element_composition.has_composition) {
+                    renderElementCompositionChart(result.data.element_composition);
+                }
             }
         } else {
             body.innerHTML = `<div class="error-box">${escapeHtml(result.error || '加载失败')}</div>`;
@@ -1757,6 +1823,164 @@ async function showDataDetail(dataId) {
 function closeDataDetailModal() {
     const modal = document.getElementById('dataDetailModal');
     modal.classList.remove('show');
+}
+
+/**
+ * 从原始 JSON 数据中提取元素组成信息，用于饼图展示
+ * 原始数据中的化学成分格式：
+ *   "化学成分": [
+ *     {"成分": "Al", "含量（wt%）": "5.15"},
+ *     {"成分": "Ti", "含量（wt%）": "余量"}
+ *   ]
+ */
+function extractElementComposition(rawData) {
+    var dataContent = rawData.data || {};
+    var chemComponents = null;
+    
+    // 查找化学成分字段（可能是"化学成分"或其他键）
+    for (var key in dataContent) {
+        if (dataContent.hasOwnProperty(key) && key.indexOf('化学') >= 0 && Array.isArray(dataContent[key])) {
+            chemComponents = dataContent[key];
+            break;
+        }
+    }
+    
+    if (!chemComponents || chemComponents.length === 0) {
+        return null;
+    }
+    
+    var elements = [];
+    var knownSum = 0.0;
+    var remainderElem = null;
+    
+    for (var i = 0; i < chemComponents.length; i++) {
+        var item = chemComponents[i];
+        var name = item['成分'] || '';
+        var valStr = item['含量（wt%）'] || item['含量'] || '';
+        
+        if (!name) continue;
+        
+        // 解析数值
+        var val = parseFloat(valStr);
+        if (isNaN(val)) {
+            // 可能是"余量"
+            if (valStr.indexOf('余') >= 0) {
+                remainderElem = name;
+            }
+            continue;
+        }
+        
+        // 处理范围格式（如 "2.0~3.0"）
+        if (valStr.indexOf('~') >= 0 || valStr.indexOf('-') >= 0) {
+            var parts = valStr.split(/[~\-]/);
+            if (parts.length === 2) {
+                var left = parseFloat(parts[0]);
+                var right = parseFloat(parts[1]);
+                if (!isNaN(left) && !isNaN(right)) {
+                    val = (left + right) / 2;
+                }
+            }
+        }
+        
+        elements.push({
+            name: name,
+            value: val,
+            raw: valStr
+        });
+        knownSum += val;
+    }
+    
+    if (elements.length === 0) {
+        return null;
+    }
+    
+    // 处理余量
+    if (remainderElem) {
+        var remainder = Math.max(0, 100 - knownSum);
+        elements.push({
+            name: remainderElem,
+            value: remainder,
+            raw: '余量',
+            is_remainder: true
+        });
+    }
+    
+    // 按含量排序
+    elements.sort(function(a, b) { return b.value - a.value; });
+    
+    return {
+        has_composition: true,
+        elements: elements,
+        total_known: knownSum
+    };
+}
+
+function buildRawDataDetailHTML(rawData, dataId) {
+    console.log('[buildRawDataDetailHTML] rawData keys:', Object.keys(rawData));
+    console.log('[buildRawDataDetailHTML] rawData.data exists:', !!rawData.data);
+    
+    let html = '<div class="data-detail-content">';
+
+    // 标题
+    let title = '未命名';
+    if (rawData.title) {
+        title = rawData.title;
+    } else if (rawData.data) {
+        // 尝试多种可能的标题字段
+        var possibleTitles = ['MGE18_标题', 'MGE18_', 'title'];
+        for (var i = 0; i < possibleTitles.length; i++) {
+            if (rawData.data[possibleTitles[i]]) {
+                title = rawData.data[possibleTitles[i]];
+                break;
+            }
+        }
+    }
+    html += '<div class="data-detail-title">' + escapeHtml(title) + '</div>';
+
+    // 元信息
+    html += '<div class="data-detail-section">';
+    html += '<div class="data-detail-section-title">元信息</div>';
+    html += '<div class="data-detail-props">';
+    html += '<div class="data-detail-prop"><span class="prop-name">_meta_id</span><span class="prop-value">' + escapeHtml(String(rawData._meta_id !== undefined ? rawData._meta_id : dataId)) + '</span></div>';
+    html += '<div class="data-detail-prop"><span class="prop-name">_id</span><span class="prop-value">' + escapeHtml(String(rawData._id || '')) + '</span></div>';
+    html += '<div class="data-detail-prop"><span class="prop-name">_tid</span><span class="prop-value">' + escapeHtml(String(rawData._tid || '')) + '</span></div>';
+    html += '</div></div>';
+
+    // 元素组成饼图（从原始数据中提取）
+    var elementComposition = extractElementComposition(rawData);
+    if (elementComposition && elementComposition.has_composition) {
+        html += '<div class="element-composition-section">';
+        html += '<div class="data-detail-section-title">元素组成</div>';
+        html += '<div id="element-chart-' + dataId + '" class="element-chart-container"></div>';
+        html += '</div>';
+    }
+
+    // 原始 data 字段（JSON 格式展示）
+    var dataContent = rawData.data || {};
+    var dataKeys = Object.keys(dataContent);
+    console.log('[buildRawDataDetailHTML] data keys count:', dataKeys.length);
+    console.log('[buildRawDataDetailHTML] data keys:', dataKeys.slice(0, 10));
+    
+    // 显示所有原始字段（不仅仅是 data 字段）
+    html += '<div class="data-detail-section">';
+    html += '<div class="data-detail-section-title">原始数据 (JSON)</div>';
+    try {
+        var fullRecord = {};
+        for (var key in rawData) {
+            if (rawData.hasOwnProperty(key)) {
+                fullRecord[key] = rawData[key];
+            }
+        }
+        var jsonStr = JSON.stringify(fullRecord, null, 2);
+        html += '<pre class="raw-json-block"><code class="language-json">' + escapeHtml(jsonStr) + '</code></pre>';
+    } catch (e) {
+        html += '<div class="error-box">JSON 序列化失败: ' + escapeHtml(String(e)) + '</div>';
+    }
+    html += '</div>';
+
+    html += '</div>';
+    console.log('[buildRawDataDetailHTML] final HTML length:', html.length);
+    return html;
 }
 
 function buildDataDetailHTML(data) {
@@ -1819,7 +2043,7 @@ function buildDataDetailHTML(data) {
 /**
  * 渲染元素组成饼图
  */
-function renderElementCompositionChart(composition) {
+function renderElementCompositionChart(composition, containerId) {
     if (!window.echarts) {
         console.warn('[renderElementCompositionChart] ECharts not loaded');
         return;
@@ -1828,9 +2052,23 @@ function renderElementCompositionChart(composition) {
     const elements = composition.elements || [];
     if (elements.length === 0) return;
 
-    // 查找图表容器（使用第一个找到的）
-    const container = document.querySelector('.element-chart-container');
-    if (!container) return;
+    // 使用传入的容器 ID，或回退到旧的类选择器
+    var container = null;
+    if (containerId) {
+        container = document.getElementById(containerId);
+    }
+    if (!container) {
+        container = document.querySelector('.element-chart-container');
+    }
+    if (!container) {
+        console.warn('Element chart container not found for:', containerId);
+        return;
+    }
+    
+    // 清空容器并设置高度
+    container.innerHTML = '';
+    container.style.height = '300px';
+    container.style.width = '100%';
 
     try {
         const chart = echarts.init(container);

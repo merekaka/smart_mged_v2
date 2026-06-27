@@ -34,6 +34,7 @@ from .services import (
 from .backend_client import fetch_full_result
 from .result_fetcher import to_classified_format, fetch_result_details
 from .element_composition import build_element_composition
+from .raw_data_loader import load_raw_data_by_meta_id
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +103,7 @@ def _execute_intent_init(conv: Conversation, user_query: str):
         if aggs:
             sql_info["aggregation_sql"] = [
                 {"field": a.get("field"), "agg_func": a.get("agg_func"),
+                 "agg_value": a.get("agg_value"),
                  "stat_sql": a.get("stat_sql"), "stat_sql_rendered": a.get("stat_sql_rendered")}
                 for a in aggs
             ]
@@ -143,6 +145,11 @@ def _execute_intent_init(conv: Conversation, user_query: str):
         "sql_params": sql_info.get("sql_params", []),
         "sql_rendered": sql_info.get("sql_rendered"),
     }
+    # 如果有聚合结果，将聚合信息加入 meta，供前端展示
+    aggs = (sql_info or {}).get("aggregation_sql") or []
+    if aggs:
+        result_meta["aggregations"] = aggs
+
     ChatMessage.objects.create(
         conversation=conv,
         role=ChatMessage.Role.ASSISTANT,
@@ -177,6 +184,7 @@ def _execute_intent_init(conv: Conversation, user_query: str):
         "sql": sql_info.get("sql"),
         "sql_params": sql_info.get("sql_params", []),
         "sql_rendered": sql_info.get("sql_rendered"),
+        "aggregations": (sql_info or {}).get("aggregation_sql") or [],
     }
     return data, None
 
@@ -309,6 +317,7 @@ class ConversationListCreateView(View):
                 if aggs:
                     sql_info["aggregation_sql"] = [
                         {"field": a.get("field"), "agg_func": a.get("agg_func"),
+                         "agg_value": a.get("agg_value"),
                          "stat_sql": a.get("stat_sql"), "stat_sql_rendered": a.get("stat_sql_rendered")}
                         for a in aggs
                     ]
@@ -370,6 +379,7 @@ class ConversationListCreateView(View):
                     "sql": sql_info.get("sql"),
                     "sql_params": sql_info.get("sql_params", []),
                     "sql_rendered": sql_info.get("sql_rendered"),
+                    "aggregations": (sql_info or {}).get("aggregation_sql") or [],
                 },
             })
 
@@ -641,19 +651,32 @@ class MessageCreateView(View):
 class DataDetailView(View):
     """
     GET /api/chat/data_detail/<int:data_id>
-    根据 data_id 查询 MySQL 中该条数据的完整详情（分类格式）。
+    根据 data_id 查询原始 JSON 数据（从 data/ 目录下的 JSON 文件）。
     """
 
     def get(self, request, data_id):
         try:
             logger.info(f"DataDetailView GET: data_id={data_id}")
+            # 优先从原始 JSON 文件加载
+            raw_data = load_raw_data_by_meta_id(int(data_id))
+            if raw_data:
+                logger.info(f"DataDetailView GET: data_id={data_id}, loaded raw data from file")
+                return JsonResponse({
+                    "success": True,
+                    "data": {
+                        "raw_json": raw_data,
+                        "data_id": data_id,
+                    },
+                })
+
+            # 回退：从 MySQL 加载处理后的数据（兼容旧数据）
             details = fetch_result_details([int(data_id)])
             if not details:
-                logger.warning(f"DataDetailView GET: data_id={data_id} not found")
+                logger.warning(f"DataDetailView GET: data_id={data_id} not found in raw data or MySQL")
                 return JsonResponse(
                     {"success": False, "error": "数据不存在"}, status=404
                 )
-            logger.info(f"DataDetailView GET: data_id={data_id}, found {len(details)} record")
+            logger.info(f"DataDetailView GET: data_id={data_id}, fallback to MySQL data")
             detail_data = details[0]
             # 自动计算元素组成（用于饼图展示）
             detail_data["element_composition"] = build_element_composition(detail_data)

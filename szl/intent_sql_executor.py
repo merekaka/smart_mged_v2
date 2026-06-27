@@ -448,6 +448,7 @@ class IntentSqlExecutor:
                 agg_value = row.get(agg_alias)
 
                 matched_ids: List[int] = []
+                # max/min: 取最值对应的一条记录；avg: 取所有参与计算的数据
                 if agg_value is not None and func in {"max", "min"}:
                     # 为避免等值匹配带来多个或错误的 id，按 CAST 排序取第一条（max => DESC, min => ASC）。
                     if _is_numeric_value(agg_value):
@@ -532,13 +533,54 @@ class IntentSqlExecutor:
                     cursor.execute(ids_sql, ids_params)
                     matched_ids = [int(x["data_id"]) for x in cursor.fetchall()]
 
+                elif agg_value is not None and func == "avg":
+                    # avg: 返回所有参与平均值计算的数据（具有该属性且值非空）
+                    ids_from_clause = "FROM smart_mged.value_table v"
+                    ids_where = [
+                        "v.property_id = %s",
+                        "v.value != ''",
+                        "v.value IS NOT NULL",
+                    ]
+                    ids_params = [property_id]
+                    if datasets or normal_conditions:
+                        ids_from_clause = "FROM smart_mged.entity_table e\nJOIN smart_mged.value_table v ON v.data_id = e.data_id"
+                    if datasets:
+                        ids_where.insert(0, "e.title IN (%s)")
+                        ids_params = list(datasets) + ids_params
+
+                    for c in normal_conditions:
+                        nf = self._normalize_field(c.get("field"))
+                        if nf == "dataset":
+                            continue
+                        npid = self._get_property_id(nf)
+                        if npid is None:
+                            continue
+                        join_idx += 1
+                        alias = f"vf{join_idx}"
+                        ids_from_clause += f"\nJOIN smart_mged.value_table {alias} ON {alias}.data_id = e.data_id"
+                        sub_clause, sub_params = self._build_single_condition_clause(alias, c, npid)
+                        ids_where.append(sub_clause)
+                        ids_params.extend(sub_params)
+
+                    id_field = "e.data_id" if (datasets or normal_conditions) else "v.data_id"
+                    ids_sql = (
+                        f"SELECT DISTINCT {id_field} AS data_id\n"
+                        f"{ids_from_clause}\n"
+                        + "WHERE "
+                        + "\n    AND ".join(ids_where)
+                        + "\nORDER BY data_id ASC;"
+                    )
+
+                    cursor.execute(ids_sql, ids_params)
+                    matched_ids = [int(x["data_id"]) for x in cursor.fetchall()]
+
                 results.append(
                     {
                         "field": field,
                         "agg_func": func,
                         "agg_value": float(agg_value) if agg_value is not None else None,
-                        # 聚合查询不返回 data_id，仅返回聚合值
-                        "matched_data_ids": [],
+                        # max/min/avg 返回匹配到的 data_id，供前端展示对应数据详情
+                        "matched_data_ids": matched_ids,
                         "stat_sql": stat_sql,
                         "stat_sql_params": stat_params,
                         "stat_sql_rendered": self._render_sql(stat_sql, stat_params),
@@ -614,7 +656,8 @@ class IntentSqlExecutor:
                 sql=str(primary_agg.get("stat_sql") or ""),
                 params=list(primary_agg.get("stat_sql_params") or []),
             )
-            data_ids: List[int] = []
+            # 从聚合结果中提取匹配的 data_ids（如 max/min 查询已找到对应记录）
+            data_ids: List[int] = primary_agg.get("matched_data_ids", [])
             total = len(agg_results)
         else:
             sql_result = self._build_simple_data_ids_sql(conditions, datasets=datasets, limit=limit)
